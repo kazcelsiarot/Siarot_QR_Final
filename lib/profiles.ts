@@ -1,6 +1,7 @@
+
 import { supabase } from './supabase';
 
-export type Role = 'student' | 'teacher';
+export type Role = 'student' | 'teacher' | 'admin';
 
 export type Profile = {
   id: string;
@@ -27,7 +28,6 @@ export async function updateProfile(
   userId: string,
   updates: {
     full_name?: string;
-    role?: Role;
   }
 ): Promise<{ error: string | null }> {
   const { error } = await supabase

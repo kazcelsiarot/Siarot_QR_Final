@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import {
   StyleSheet,
@@ -66,32 +67,40 @@ export default function ProfileScreen() {
     }
   };
 
- const handleSignOut = async () => {
-  console.log('SIGN OUT BUTTON PRESSED');
+  const handleSignOut = async () => {
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const { error } = await signOut();
 
-  try {
-    const { error } = await signOut();
-
-    console.log('SIGN OUT RESULT:', error?.message ?? null);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      router.replace('/login');
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        router.replace('/login');
+      }
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err?.message || 'Failed to sign out.'
+      );
+    } finally {
+      setLoading(false);
     }
-  } catch (err: any) {
-    console.log('SIGN OUT ERROR:', err?.message);
+  };
 
-    Alert.alert(
-      'Error',
-      err?.message || 'Failed to sign out.'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  const roleLabel = (role: Profile['role'] | undefined) => {
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'teacher':
+        return 'Teacher';
+      case 'student':
+        return 'Student';
+      default:
+        return 'Unknown';
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Profile</Text>
@@ -148,7 +157,7 @@ export default function ProfileScreen() {
 
           <View style={styles.roleBadge}>
             <Text style={styles.roleText}>
-              {profile?.role === 'teacher' ? 'Teacher' : 'Student'}
+              {roleLabel(profile?.role)}
             </Text>
           </View>
 

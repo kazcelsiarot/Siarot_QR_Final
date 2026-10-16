@@ -19,8 +19,11 @@ expo-env.d.ts
 # macOS
 .DS_Store
 
-# local env files
-+ .env
-+ .env*.local
+# local env files and secrets
+.env
+.env.*
+!.env.example
+*.local
+
 # teaching materials
 docs/
