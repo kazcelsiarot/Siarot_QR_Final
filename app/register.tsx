@@ -8,8 +8,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Keyboard,
-  Pressable,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,11 +21,7 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Phase 5: Full Name and Role
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
-
-  // Existing code
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,30 +54,35 @@ export default function RegisterScreen() {
 
     setLoading(true);
 
-    try {
-      // Phase 5: pass full_name and role to signUp
-      const { data, error: authError } = await signUp(
-        email.trim(),
-        password,
-        {
-          full_name: fullName.trim(),
-          role,
-        }
-      );
-
-      if (authError) {
-        setError(authError.message);
-      } else if (data.session) {
-        // Phase 5: go to tabs when signup succeeds with a session
-        router.replace('/(tabs)');
-      } else {
-        setSuccess(true);
-      }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setLoading(false);
+try {
+  const { data, error: authError } = await signUp(
+    email.trim(),
+    password,
+    {
+      full_name: fullName.trim(),
+      role: 'student',
     }
+  );
+
+  if (authError) {
+    setError(authError.message);
+    return;
+  }
+
+  if (data.session) {
+    router.replace('/(tabs)');
+  } else {
+    setSuccess(true);
+  }
+} catch (err) {
+  setError(
+    err instanceof Error
+      ? err.message
+      : 'An unexpected error occurred. Please try again.'
+  );
+} finally {
+  setLoading(false);
+}
   };
 
   return (
@@ -93,155 +92,123 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.headerContainer}>
-              <Header title="QR Attendance" />
-            </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerContainer}>
+            <Header title="QR Attendance" />
+          </View>
 
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              Register to start recording attendance
-            </Text>
+          <Text style={styles.title}>Create Account</Text>
 
-            {success ? (
-              <View style={styles.successContainer}>
-                <Text style={styles.successTitle}>Check your email!</Text>
+          <Text style={styles.subtitle}>
+            Register to start recording attendance
+          </Text>
 
-                <Text style={styles.successText}>
-                  We sent a confirmation link to {email}. Click the link to
-                  verify your account, then come back and sign in.
-                </Text>
+          {success ? (
+            <View style={styles.successContainer}>
+              <Text style={styles.successTitle}>Check your email!</Text>
 
-                <Link href="/login" style={styles.link}>
-                  Back to Sign In
-                </Link>
-              </View>
-            ) : (
-              <View style={styles.form}>
-                {/* Phase 5: Full Name */}
-                <Text style={styles.label}>Full Name</Text>
+              <Text style={styles.successText}>
+                We sent a confirmation link to {email}. Click the link to
+                verify your account, then come back and sign in.
+              </Text>
 
-                <TextInput
-                  style={styles.input}
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholder="Enter your full name"
-                  placeholderTextColor={COLORS.textSecondary}
-                  autoCapitalize="words"
-                  editable={!loading}
-                />
-
-                {/* Phase 5: Student / Teacher picker */}
-                <Text style={styles.label}>I am a</Text>
-
-                <View style={styles.roleContainer}>
-                  <Pressable
-                    style={[
-                      styles.roleButton,
-                      role === 'student' && styles.roleButtonSelected,
-                    ]}
-                    onPress={() => setRole('student')}
-                    disabled={loading}
-                  >
-                    <Text
-                      style={[
-                        styles.roleText,
-                        role === 'student' && styles.roleTextSelected,
-                      ]}
-                    >
-                      Student
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={[
-                      styles.roleButton,
-                      role === 'teacher' && styles.roleButtonSelected,
-                    ]}
-                    onPress={() => setRole('teacher')}
-                    disabled={loading}
-                  >
-                    <Text
-                      style={[
-                        styles.roleText,
-                        role === 'teacher' && styles.roleTextSelected,
-                      ]}
-                    >
-                      Teacher
-                    </Text>
-                  </Pressable>
-                </View>
-
-                {/* Existing Email field */}
-                <Text style={styles.label}>Email</Text>
-
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="your.email@school.edu"
-                  placeholderTextColor={COLORS.textSecondary}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  editable={!loading}
-                />
-
-                {/* Existing Password field */}
-                <Text style={styles.label}>Password</Text>
-
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="At least 6 characters"
-                  placeholderTextColor={COLORS.textSecondary}
-                  secureTextEntry
-                  editable={!loading}
-                />
-
-                {/* Existing Confirm Password field */}
-                <Text style={styles.label}>Confirm Password</Text>
-
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Re-enter your password"
-                  placeholderTextColor={COLORS.textSecondary}
-                  secureTextEntry
-                  editable={!loading}
-                />
-
-                {error && <Text style={styles.error}>{error}</Text>}
-
-                {loading ? (
-                  <ActivityIndicator
-                    size="large"
-                    color={COLORS.primary}
-                    style={styles.loader}
-                  />
-                ) : (
-                  <AppButton
-                    theme="primary"
-                    title="Sign Up"
-                    icon="person-add-outline"
-                    onPress={handleRegister}
-                  />
-                )}
-              </View>
-            )}
-
-            {!success && (
               <Link href="/login" style={styles.link}>
-                Already have an account? Sign In
+                Back to Sign In
               </Link>
-            )}
-          </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.form}>
+              <Text style={styles.label}>Full Name</Text>
+
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Enter your full name"
+                placeholderTextColor={COLORS.textSecondary}
+                autoCapitalize="words"
+                autoCorrect={false}
+                textContentType="name"
+                editable={!loading}
+              />
+
+              <Text style={styles.label}>Email</Text>
+
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="your.email@school.edu"
+                placeholderTextColor={COLORS.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                editable={!loading}
+              />
+
+              <Text style={styles.label}>Password</Text>
+
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                placeholderTextColor={COLORS.textSecondary}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                editable={!loading}
+              />
+
+              <Text style={styles.label}>Confirm Password</Text>
+
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter your password"
+                placeholderTextColor={COLORS.textSecondary}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                editable={!loading}
+                onSubmitEditing={handleRegister}
+              />
+
+              {error ? (
+                <Text style={styles.error}>{error}</Text>
+              ) : null}
+
+              {loading ? (
+                <ActivityIndicator
+                  size="large"
+                  color={COLORS.primary}
+                  style={styles.loader}
+                />
+              ) : (
+                <AppButton
+                  theme="primary"
+                  title="Sign Up"
+                  icon="person-add-outline"
+                  onPress={handleRegister}
+                />
+              )}
+            </View>
+          )}
+
+          {!success && (
+            <Link href="/login" style={styles.link}>
+              Already have an account? Sign In
+            </Link>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -308,38 +275,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // Phase 5: role picker styles
-  roleContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  roleButton: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-
-  roleButtonSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '14',
-  },
-
-  roleText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-
-  roleTextSelected: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-
   error: {
     fontSize: 14,
     color: COLORS.danger,
@@ -382,4 +317,3 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 });
-

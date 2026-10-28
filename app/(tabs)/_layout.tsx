@@ -1,67 +1,102 @@
-
 import { useEffect, useState } from 'react';
-import { Tabs } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Redirect, Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/lib/auth';
 import { getProfile } from '@/lib/profiles';
 
+type UserRole = 'student' | 'teacher' | 'admin';
+
 export default function TabLayout() {
-  const { user, loading } = useAuth();
-  const [role, setRole] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
-  
-useEffect(() => {
-  let active = true;
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
-  async function loadRole() {
-    if (loading || !user) {
-      setRole(null);
-      return;
+  useEffect(() => {
+    let active = true;
+
+    async function loadRole() {
+      if (authLoading) {
+        return;
+      }
+
+      if (!user) {
+        if (active) {
+          setRole(null);
+          setRoleLoading(false);
+        }
+
+        return;
+      }
+
+      setRoleLoading(true);
+
+      try {
+        const profile = await getProfile(user.id);
+
+        if (!active) {
+          return;
+        }
+
+        const normalizedRole = profile?.role?.trim().toLowerCase();
+
+        if (
+          normalizedRole === 'student' ||
+          normalizedRole === 'teacher' ||
+          normalizedRole === 'admin'
+        ) {
+          setRole(normalizedRole);
+        } else {
+          setRole('student');
+        }
+      } catch (error) {
+        console.error('Failed to load profile role:', error);
+
+        if (active) {
+          setRole('student');
+        }
+      } finally {
+        if (active) {
+          setRoleLoading(false);
+        }
+      }
     }
 
-    try {
-      const profile = await getProfile(user.id);
+    loadRole();
 
-      if (active) {
-        const userRole = profile?.role?.trim().toLowerCase() ?? null;
-        setRole(userRole);
-        console.log('Current user ID:', user.id);
-        console.log('Profile role:', profile?.role);
-        console.log('Normalized role:', userRole);
-      }
-    } catch (error) {
-      console.error('Failed to load profile role:', error);
+    return () => {
+      active = false;
+    };
+  }, [user, authLoading]);
 
-      if (active) {
-        setRole(null);
-      }
-    }
+  if (authLoading || roleLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
   }
 
-  loadRole();
-
-  return () => {
-    active = false;
-  };
-}, [user, loading]);
-
+  if (!user) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
-        headerStyle: { backgroundColor: COLORS.background },
-        headerShadowVisible: false,
-        headerTintColor: COLORS.textPrimary,
-        tabBarStyle: {
-          backgroundColor: COLORS.card,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-        },
-      }}
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: '#FED7B8',
+          tabBarInactiveTintColor: 'rgba(254, 215, 184, 0.55)',
+          sceneStyle: { backgroundColor: COLORS.background },
+          tabBarStyle: {
+            backgroundColor: 'rgba(89, 23, 27, 0.94)',
+            borderTopColor: 'rgba(254, 215, 184, 0.25)',
+            borderTopWidth: 1,
+          },
+        }}
     >
       <Tabs.Screen
         name="index"
@@ -123,6 +158,7 @@ useEffect(() => {
         name="teacher"
         options={{
           title: 'Teacher',
+          href: role === 'teacher' ? undefined : null,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'clipboard' : 'clipboard-outline'}
@@ -154,3 +190,12 @@ useEffect(() => {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+});

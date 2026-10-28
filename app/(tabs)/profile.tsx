@@ -1,15 +1,15 @@
-
 import { useCallback, useState } from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
   View,
-  Alert,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import AppButton from '@/components/AppButton';
+import GradientBackground from '@/components/GradientBackground';
 import { COLORS } from '@/constants/colors';
 import { useAuth, signOut } from '@/lib/auth';
 import {
@@ -102,105 +102,117 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My Profile</Text>
+    <GradientBackground>
+      <View style={styles.container}>
+        <Text style={styles.title}>My Profile</Text>
 
-      {user && (
-        <View style={styles.infoCard}>
-          <Text style={styles.label}>Name</Text>
+        {user && (
+          <View style={styles.infoCard}>
+            <Text style={styles.label}>Name</Text>
 
-          {editing ? (
-            <View>
-              <TextInput
-                style={styles.input}
-                value={draftName}
-                onChangeText={setDraftName}
-                placeholder="Enter your name"
-                placeholderTextColor={COLORS.textSecondary}
-                editable={!saving}
-              />
-
-              <View style={styles.editButtons}>
-                <AppButton
-                  title={saving ? 'Saving...' : 'Save'}
-                  icon="save-outline"
-                  onPress={handleSaveName}
-                  disabled={saving}
+            {editing ? (
+              <View>
+                <TextInput
+                  style={styles.input}
+                  value={draftName}
+                  onChangeText={setDraftName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={COLORS.textSecondary}
+                  editable={!saving}
                 />
 
+                <View style={styles.editButtons}>
+                  <AppButton
+                    title={saving ? 'Saving...' : 'Save'}
+                    icon="save-outline"
+                    onPress={handleSaveName}
+                    disabled={saving}
+                  />
+
+                  <AppButton
+                    title="Cancel"
+                    icon="close-outline"
+                    onPress={() => {
+                      setDraftName(profile?.full_name ?? '');
+                      setEditing(false);
+                    }}
+                    disabled={saving}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.nameRow}>
+                <Text style={styles.value}>
+                  {profile?.full_name || 'Tap to add your name'}
+                </Text>
+
                 <AppButton
-                  title="Cancel"
-                  icon="close-outline"
-                  onPress={() => {
-                    setDraftName(profile?.full_name ?? '');
-                    setEditing(false);
-                  }}
-                  disabled={saving}
+                  title="Edit"
+                  icon="create-outline"
+                  onPress={() => setEditing(true)}
                 />
               </View>
-            </View>
-          ) : (
-            <View style={styles.nameRow}>
-              <Text style={styles.value}>
-                {profile?.full_name || 'Tap to add your name'}
+            )}
+
+            <Text style={styles.label}>Role</Text>
+
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>
+                {roleLabel(profile?.role)}
               </Text>
-
-              <AppButton
-                title="Edit"
-                icon="create-outline"
-                onPress={() => setEditing(true)}
-              />
             </View>
-          )}
 
-          <Text style={styles.label}>Role</Text>
-
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>
-              {roleLabel(profile?.role)}
+            <Text style={styles.label}>Email</Text>
+            <Text style={styles.value}>
+              {profile?.email ?? user.email}
             </Text>
+
+            <Text style={styles.label}>User ID</Text>
+            <Text style={styles.valueSmall}>{user.id}</Text>
           </View>
+        )}
 
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>
-            {profile?.email ?? user.email}
-          </Text>
-
-          <Text style={styles.label}>User ID</Text>
-          <Text style={styles.valueSmall}>{user.id}</Text>
-        </View>
-      )}
-
-      <AppButton
-        title="Sign Out"
-        icon="log-out-outline"
-        onPress={handleSignOut}
-        disabled={loading}
-      />
-    </View>
+        <AppButton
+          title="Sign Out"
+          icon="log-out-outline"
+          onPress={handleSignOut}
+          disabled={loading}
+        />
+      </View>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
     paddingHorizontal: 24,
     paddingTop: 24,
   },
 
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FED7B8',
     marginBottom: 16,
+    textShadowColor: 'rgba(58, 15, 18, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 
   infoCard: {
-    backgroundColor: '#DFF5E1',
-    borderRadius: 14,
+    backgroundColor: 'rgba(254, 215, 184, 0.92)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.55)',
     padding: 16,
     marginBottom: 24,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
   },
 
   label: {
@@ -223,8 +235,8 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: '#DFF5E1',
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 14,
@@ -244,8 +256,8 @@ const styles = StyleSheet.create({
 
   roleBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginBottom: 8,
@@ -253,7 +265,7 @@ const styles = StyleSheet.create({
 
   roleText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.primary,
   },
 });

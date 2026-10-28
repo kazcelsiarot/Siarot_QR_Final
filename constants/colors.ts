@@ -1,15 +1,20 @@
 export const COLORS = {
-  primary: '#2E7D5B',
-  background: '#F7F6F2',
+  /* Gradient endpoints, exactly the two from your reference. */
+  gradientDark: '#59171B',
+  gradientLight: '#FED7B8',
+
+  /* Solid fallbacks used by every screen. */
+  primary: '#59171B',
+  background: '#FBF4EC',
   card: '#FFFFFF',
-  textPrimary: '#14181F',
-  textSecondary: '#5D6B7A',
+  textPrimary: '#2A1416',
+  textSecondary: '#7A6360',
   textOnPrimary: '#FFFFFF',
-  surface: '#EFF3F0',
-  border: '#DADFE3',
-  shadow: '#14181F',
+  surface: '#FED7B8',
+  border: '#E8D9CC',
+  shadow: '#3A0F12',
   warning: '#C97A2B',
   success: '#2E7D5B',
   danger: '#B3261E',
+  accent: '#FED7B8',
 } as const;
-

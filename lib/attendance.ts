@@ -7,6 +7,7 @@ export type AttendanceRecord = {
   eventId: string;
   eventTitle: string;
   scannedAt: string;
+  endTime: string | null;
 };
 
 export type RegisterResult = {
@@ -120,17 +121,21 @@ export async function registerAttendance(
   };
 }
 
+export type AttendanceAttendee = {
+  studentId: string;
+  studentName: string;
+  scannedAt: string;
+};
+
 export type TeacherEventAttendance = {
   eventId: string;
   eventCode: string;
   title: string;
   startTime: string | null;
   endTime: string | null;
+  teacherName?: string;
   attendeeCount: number;
-  attendees: {
-    studentId: string;
-    scannedAt: string;
-  }[];
+  attendees: AttendanceAttendee[];
 };
 
 export type TeacherEventSummary = {
@@ -140,48 +145,156 @@ export type TeacherEventSummary = {
   attendeeCount: number;
 };
 
-export async function getTeacherEventAttendance(
-  teacherId: string
+type RawEventRow = {
+  id: string;
+  event_code: string | null;
+  title: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  created_by: string | null;
+};
+
+type RawAttendanceRow = {
+  student_id: string | null;
+  scanned_at: string | null;
+  event_id: string | null;
+};
+
+type RawProfileRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
+/** Resolves names for a set of profile ids, keyed by id. */
+async function loadProfileNames(
+  ids: string[]
+): Promise<Record<string, string>> {
+  const uniqueIds = Array.from(
+    new Set(ids.filter((id) => Boolean(id)))
+  );
+
+  if (uniqueIds.length === 0) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', uniqueIds);
+
+  if (error || !data) {
+    console.error(
+      'Failed to load profile names:',
+      error?.message
+    );
+    return {};
+  }
+
+  const names: Record<string, string> = {};
+
+  (data as RawProfileRow[]).forEach((row) => {
+    names[row.id] = row.full_name || row.email || 'Unnamed user';
+  });
+
+  return names;
+}
+
+/**
+ * Builds the per-event attendance view. When teacherId is null it
+ * covers every teacher's events, which is what an admin sees.
+ */
+async function buildEventAttendance(
+  teacherId: string | null
 ): Promise<TeacherEventAttendance[]> {
-  // Step 1: Fetch the events created by this teacher
-  const { data: events, error: eventError } = await supabase
+  let eventQuery = supabase
     .from('events')
-    .select('id, event_code, title, start_time, end_time')
-    .eq('created_by', teacherId)
+    .select(
+      'id, event_code, title, start_time, end_time, created_by'
+    )
     .order('created_at', { ascending: false });
 
-  if (eventError || !events) return [];
+  if (teacherId) {
+    eventQuery = eventQuery.eq('created_by', teacherId);
+  }
 
-  const eventIds = events.map((e: any) => e.id);
+  const { data: events, error: eventError } = await eventQuery;
 
-  if (eventIds.length === 0) return [];
+  if (eventError || !events) {
+    console.error(
+      'Failed to load events:',
+      eventError?.message
+    );
+    return [];
+  }
 
-  // Step 2: Fetch attendance for all of those events
+  const eventRows = events as RawEventRow[];
+  const eventIds = eventRows.map((row) => row.id);
+
+  if (eventIds.length === 0) {
+    return [];
+  }
+
   const { data: attendance, error: attError } = await supabase
     .from('attendance')
     .select('student_id, scanned_at, event_id')
     .in('event_id', eventIds)
     .order('scanned_at', { ascending: false });
 
-  if (attError || !attendance) return [];
+  if (attError || !attendance) {
+    console.error(
+      'Failed to load attendance:',
+      attError?.message
+    );
+    return [];
+  }
 
-  // Step 3: Group attendance by event
-  return events.map((e: any) => {
-    const rows = attendance.filter((a: any) => a.event_id === e.id);
+  const attendanceRows = attendance as RawAttendanceRow[];
+
+  /* One profiles lookup covers both attendee names and teachers. */
+  const names = await loadProfileNames([
+    ...attendanceRows.map((row) => row.student_id ?? ''),
+    ...eventRows.map((row) => row.created_by ?? ''),
+  ]);
+
+  return eventRows.map((eventRow) => {
+    const rows = attendanceRows.filter(
+      (row) => row.event_id === eventRow.id
+    );
 
     return {
-      eventId: e.id,
-      eventCode: e.event_code,
-      title: e.title,
-      startTime: e.start_time,
-      endTime: e.end_time,
+      eventId: eventRow.id,
+      eventCode: eventRow.event_code ?? '',
+      title: eventRow.title ?? 'Untitled event',
+      startTime: eventRow.start_time,
+      endTime: eventRow.end_time,
+      teacherName: eventRow.created_by
+        ? names[eventRow.created_by] ?? 'Unknown teacher'
+        : 'Unknown teacher',
       attendeeCount: rows.length,
-      attendees: rows.map((a: any) => ({
-        studentId: a.student_id,
-        scannedAt: a.scanned_at,
+      attendees: rows.map((row) => ({
+        studentId: row.student_id ?? '',
+        studentName: row.student_id
+          ? names[row.student_id] ?? 'Unnamed student'
+          : 'Unnamed student',
+        scannedAt: row.scanned_at ?? '',
       })),
     };
   });
+}
+
+/** Every event the signed-in teacher created. */
+export async function getTeacherEventAttendance(
+  teacherId: string
+): Promise<TeacherEventAttendance[]> {
+  return buildEventAttendance(teacherId);
+}
+
+/** Every event from every teacher, for the admin view. */
+export async function getAllEventAttendance(): Promise<
+  TeacherEventAttendance[]
+> {
+  return buildEventAttendance(null);
 }
 
 export async function getTeacherEventSummary(
@@ -225,7 +338,9 @@ export async function getAttendanceHistory(
 ): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from('attendance')
-    .select('id, scanned_at, events ( event_code, title )')
+    .select(
+      'id, scanned_at, events ( event_code, title, end_time )'
+    )
     .eq('student_id', studentId)
     .order('scanned_at', { ascending: false });
 
@@ -238,5 +353,6 @@ export async function getAttendanceHistory(
     eventId: row.events?.event_code ?? '',
     eventTitle: row.events?.title ?? '',
     scannedAt: row.scanned_at,
+    endTime: row.events?.end_time ?? null,
   }));
 }
